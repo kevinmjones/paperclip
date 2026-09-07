@@ -343,6 +343,7 @@ import {
 import { isAutomaticRecoverySuppressedByPauseHold } from "./recovery/pause-hold-guard.js";
 import {
   buildConfigurationIncompleteRecoveryNoticeSeed,
+  buildDeterministicTerminalRecoveryNoticeSeed,
   buildExecutionReviewParticipantRecoveryNoticeSeed,
   buildImmediateExecutionPathRecoveryNoticeSeed,
   buildWorkspaceValidationRecoveryNoticeSeed,
@@ -22263,13 +22264,16 @@ export function heartbeatService(
         !issue.assigneeUserId &&
         issue.assigneeAgentId === run.agentId
       ) {
-        const configurationIncomplete = isConfigurationIncompleteFailedRun(run) || isDeterministicTerminalFailedRun(run);
+        const configurationIncomplete = isConfigurationIncompleteFailedRun(run);
+        const deterministicTerminal = isDeterministicTerminalFailedRun(run);
         return {
           kind: "blocked" as const,
           issue,
           previousStatus: issue.status,
-          notice: configurationIncomplete
-            ? buildConfigurationIncompleteRecoveryNoticeSeed()
+          notice: deterministicTerminal
+            ? buildDeterministicTerminalRecoveryNoticeSeed(run.errorCode)
+            : configurationIncomplete
+              ? buildConfigurationIncompleteRecoveryNoticeSeed()
             : buildWorkspaceValidationRecoveryNoticeSeed(),
           recoveryCause: configurationIncomplete
             ? CONFIGURATION_INCOMPLETE_RECOVERY_CAUSE
@@ -22914,11 +22918,14 @@ export function heartbeatService(
         const workspaceValidationFailure = isWorkspaceValidationFailedRun(run);
         const configurationIncompleteFailure =
           isConfigurationIncompleteFailedRun(run);
+        const deterministicTerminalFailure = isDeterministicTerminalFailedRun(run);
         const notice = workspaceValidationFailure
           ? buildWorkspaceValidationRecoveryNoticeSeed()
           : configurationIncompleteFailure
             ? buildConfigurationIncompleteRecoveryNoticeSeed()
-            : buildImmediateExecutionPathRecoveryNoticeSeed({
+            : deterministicTerminalFailure
+              ? buildDeterministicTerminalRecoveryNoticeSeed(run.errorCode)
+              : buildImmediateExecutionPathRecoveryNoticeSeed({
                 status: issue.status as "todo" | "in_progress",
               });
         return {
