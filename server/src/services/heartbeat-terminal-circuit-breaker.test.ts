@@ -32,4 +32,15 @@ describe("terminal run circuit breaker", () => {
     expect(errorCode).toBe(expectedCode);
     expect(isDeterministicTerminalFailedRun({ errorCode })).toBe(true);
   });
+
+  it.each([
+    "acpx_auth_required",
+    "claude_auth_required",
+    "codex_auth_required",
+    "gemini_auth_required",
+    "grok_auth_required",
+    "kimi_auth_required",
+  ])("blocks terminal adapter auth failure %s without retrying", (errorCode) => {
+    expect(isDeterministicTerminalFailedRun({ errorCode })).toBe(true);
+  });
 });

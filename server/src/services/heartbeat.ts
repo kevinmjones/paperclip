@@ -722,7 +722,17 @@ export class ConfigurationIncompleteFailure extends Error {
   }
 }
 
-const DETERMINISTIC_TERMINAL_ERROR_CODES = new Set(["model_not_found", "unsupported_model_backend", "context_window_exhausted"]);
+const DETERMINISTIC_TERMINAL_ERROR_CODES = new Set([
+  "model_not_found",
+  "unsupported_model_backend",
+  "context_window_exhausted",
+  "acpx_auth_required",
+  "claude_auth_required",
+  "codex_auth_required",
+  "gemini_auth_required",
+  "grok_auth_required",
+  "kimi_auth_required",
+]);
 
 const FOREIGN_MODEL_FAMILY_BY_ADAPTER: Readonly<Record<string, ReadonlyArray<{ pattern: RegExp; family: string }>>> = {
   codex_local: [
