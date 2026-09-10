@@ -767,6 +767,19 @@ export function assertAdapterModelCompatibility(input: {
   );
 }
 
+export async function assertAdapterModelCompatibilityBeforeDispatch(input: {
+  adapterType: string;
+  adapterConfig: Record<string, unknown> | null | undefined;
+  adapter: { listModels?: () => Promise<ReadonlyArray<{ id: string }>> };
+}) {
+  const authoritativeModels = input.adapter.listModels ? await input.adapter.listModels() : null;
+  assertAdapterModelCompatibility({
+    adapterType: input.adapterType,
+    adapterConfig: input.adapterConfig,
+    authoritativeModels,
+  });
+}
+
 export function classifyDeterministicTerminalErrorCode(input: { errorCode?: string | null; errorMessage?: string | null }): string | null {
   if (input.errorCode && DETERMINISTIC_TERMINAL_ERROR_CODES.has(input.errorCode)) return input.errorCode;
   const message = input.errorMessage ?? "";
@@ -20710,11 +20723,10 @@ export function heartbeatService(
                 endedAtMs: nativeDispatchAtMs,
               },
             );
-            const authoritativeModels = adapter.listModels ? await adapter.listModels() : null;
-            assertAdapterModelCompatibility({
+            await assertAdapterModelCompatibilityBeforeDispatch({
               adapterType: agent.adapterType,
               adapterConfig: runtimeConfig,
-              authoritativeModels,
+              adapter,
             });
             const guardedDispatch =
               await dispatchResolvedInteractionContinuationWithAtomicGate(

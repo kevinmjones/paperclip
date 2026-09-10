@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   assertAdapterModelCompatibility,
+  assertAdapterModelCompatibilityBeforeDispatch,
   classifyDeterministicTerminalErrorCode,
   isDeterministicTerminalFailedRun,
 } from "./heartbeat.js";
@@ -32,6 +33,25 @@ describe("terminal run circuit breaker", () => {
         authoritativeModels: [{ id: "Gemini 3.6 Flash (High)" }],
       }),
     ).toThrow(/not advertised by agy/i);
+  });
+
+  it("rejects an agy model absent from the adapter's own authoritative catalog before dispatch", async () => {
+    let listModelsCalls = 0;
+    const adapter = {
+      listModels: async () => {
+        listModelsCalls += 1;
+        return [{ id: "Gemini 3.6 Flash (High)" }];
+      },
+    };
+
+    await expect(
+      assertAdapterModelCompatibilityBeforeDispatch({
+        adapterType: "agy",
+        adapterConfig: { model: "gemini-3.5-flash" },
+        adapter,
+      }),
+    ).rejects.toThrow(/not advertised by agy/i);
+    expect(listModelsCalls).toBe(1);
   });
 
   it.each([undefined, "", "auto"])("allows the backend-default model sentinel %s", (model) => {
