@@ -24,6 +24,36 @@ describe("terminal run circuit breaker", () => {
     ).not.toThrow();
   });
 
+  it("rejects a configured model absent from an authoritative adapter catalog", () => {
+    expect(() =>
+      assertAdapterModelCompatibility({
+        adapterType: "agy",
+        adapterConfig: { model: "gemini-3.5-flash" },
+        authoritativeModels: [{ id: "Gemini 3.6 Flash (High)" }],
+      }),
+    ).toThrow(/not advertised by agy/i);
+  });
+
+  it.each([undefined, "", "auto"])("allows the backend-default model sentinel %s", (model) => {
+    expect(() =>
+      assertAdapterModelCompatibility({
+        adapterType: "agy",
+        adapterConfig: model === undefined ? {} : { model },
+        authoritativeModels: [{ id: "Gemini 3.6 Flash (High)" }],
+      }),
+    ).not.toThrow();
+  });
+
+  it("preserves custom model IDs when no authoritative catalog exists", () => {
+    expect(() =>
+      assertAdapterModelCompatibility({
+        adapterType: "custom_adapter",
+        adapterConfig: { model: "company-finetune" },
+        authoritativeModels: null,
+      }),
+    ).not.toThrow();
+  });
+
   it.each([
     ["The model claude-sonnet-4-6 is unsupported for this account", "model_not_found"],
     ["maximum context window exceeded: too many tokens", "context_window_exhausted"],

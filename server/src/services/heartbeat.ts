@@ -742,9 +742,23 @@ const FOREIGN_MODEL_FAMILY_BY_ADAPTER: Readonly<Record<string, ReadonlyArray<{ p
 };
 
 /** Reject unmistakable cross-backend model IDs before adapter dispatch. */
-export function assertAdapterModelCompatibility(input: { adapterType: string; adapterConfig: Record<string, unknown> | null | undefined }) {
+export function assertAdapterModelCompatibility(input: {
+  adapterType: string;
+  adapterConfig: Record<string, unknown> | null | undefined;
+  authoritativeModels?: ReadonlyArray<{ id: string }> | null;
+}) {
   const model = readNonEmptyString(input.adapterConfig?.model);
-  if (!model) return;
+  if (!model || model === "auto") return;
+  if (input.authoritativeModels?.length) {
+    const advertised = input.authoritativeModels.some((candidate) => candidate.id === model);
+    if (!advertised) {
+      throw new ConfigurationIncompleteFailure(
+        "unsupported model/backend combination: model \"" + model + "\" is not advertised by " + input.adapterType,
+        { configurationIncomplete: { reason: "unsupported_model_backend", adapterType: input.adapterType, model, recoveryAction: "Select a model advertised by the configured adapter before retrying." } },
+      );
+    }
+    return;
+  }
   const incompatibleFamily = FOREIGN_MODEL_FAMILY_BY_ADAPTER[input.adapterType]?.find((candidate) => candidate.pattern.test(model));
   if (!incompatibleFamily) return;
   throw new ConfigurationIncompleteFailure(
@@ -20696,7 +20710,12 @@ export function heartbeatService(
                 endedAtMs: nativeDispatchAtMs,
               },
             );
-            assertAdapterModelCompatibility({ adapterType: agent.adapterType, adapterConfig: runtimeConfig });
+            const authoritativeModels = adapter.listModels ? await adapter.listModels() : null;
+            assertAdapterModelCompatibility({
+              adapterType: agent.adapterType,
+              adapterConfig: runtimeConfig,
+              authoritativeModels,
+            });
             const guardedDispatch =
               await dispatchResolvedInteractionContinuationWithAtomicGate(
                 (markDispatchStarted) =>
